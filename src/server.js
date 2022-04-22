@@ -3,9 +3,10 @@ import mongoose from "mongoose";
 import listEndpoints from "express-list-endpoints";
 import cors from "cors";
 import usersRouter from "./services/users/index.js";
+import accommodationRouter from "./services/accomodation/index.js";
 
 const server = express();
-const port = process.env.port || 5001;
+const port = process.env.port || 3001;
 
 //passport.use("google", googleStrategy);
 
@@ -17,6 +18,7 @@ server.use(express.json());
 
 //***********************************Endpoints*********************************************************/
 server.use("/users", usersRouter);
+server.use("/accommodation", accommodationRouter);
 
 //***********************************Error handlers****************************************************/
 
