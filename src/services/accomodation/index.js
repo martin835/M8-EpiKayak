@@ -90,9 +90,10 @@ accommodationRouter.delete(
   async (req, res, next) => {
     console.log("📨 PING - DELETE REQUEST");
     try {
-      const deletedAccommodation = await AccommodationModel.findByIdAndUpdate(
-        req.params.accommodationId
-      );
+      const deletedAccommodation = await AccommodationModel.findOneAndDelete({
+        _id: req.params.accommodationId,
+        host: req.user._id,
+      });
       if (deletedAccommodation) {
         res.status(204).send();
       } else {

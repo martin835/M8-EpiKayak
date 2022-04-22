@@ -212,7 +212,7 @@ usersRouter.post(
       // !!! this is not working -- returning null
       const isAccommodationBooked = await UsersModel.findOne({
         _id: req.params.userId,
-        "accommodations._id": accommodation._id,
+        accommodations: accommodation._id.toString(),
       });
 
       console.log(isAccommodationBooked);
@@ -221,7 +221,7 @@ usersRouter.post(
         // 3.1 If it's booked, remove it
         const modifiedAccommodations = await UsersModel.findByIdAndUpdate(
           { _id: req.params.userId },
-          { $pull: { accommodations: { _id: accommodationId } } },
+          { $pull: { accommodations: accommodationId } },
           { new: true }
         );
         res.send(modifiedAccommodations);
