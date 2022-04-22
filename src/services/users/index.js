@@ -2,6 +2,8 @@ import express from "express";
 import createError from "http-errors";
 import UsersModel from "./model.js";
 import AccommodationModel from "../accomodation/model.js";
+import { generateAccessToken } from "../../middlewares/auth/tools.js";
+import { JWTAuthMiddleware } from "../../middlewares/auth/JWTMiddleware.js";
 
 const usersRouter = express.Router();
 
@@ -23,6 +25,65 @@ usersRouter.get("/", async (req, res, next) => {
       path: "accommodations",
     });
     res.send(users);
+  } catch (error) {
+    next(error);
+  }
+});
+
+usersRouter.get("/me", JWTAuthMiddleware, async (req, res, next) => {
+  console.log("📨 PING - GET REQUEST");
+  try {
+    const user = await UsersModel.findById(req.user._id).populate({
+      path: "accommodations",
+    });
+    res.send(user);
+  } catch (error) {
+    next(error);
+  }
+});
+
+usersRouter.post("/register", async (req, res, next) => {
+  try {
+    // 1. Obtain registration data from req.body, save user and retrieve _id
+    const newUser = new UsersModel(req.body);
+    const { _id, role } = await newUser.save();
+
+    // 2. Generate access token
+    // KEYS _id and role are send as a payload to `generateAcccessToken function, that...
+    //.. creates a JWT token out of it.
+    //VALUES _id and role are retrieved from user in the DB
+    const accessToken = await generateAccessToken({
+      _id: _id,
+      role: role,
+    });
+    // 3 Send access token and _id in the response
+    res.status(201).send({ accessToken, _id, role });
+  } catch (error) {
+    next(error);
+  }
+});
+
+usersRouter.post("/login", async (req, res, next) => {
+  try {
+    // 1. Obtain credentials from req.body
+    const { email, password } = req.body;
+
+    // 2. Verify credentials
+    const user = await UsersModel.checkCredentials(email, password);
+
+    if (user) {
+      // 3. If credentials are ok we are going to generate an Access Token and send it as a response
+
+      const accessToken = await generateAccessToken({
+        _id: user._id,
+        role: user.role,
+      });
+
+      res.send({ accessToken });
+    } else {
+      // 4. If credentials are not fine --> throw an error (401)
+      next(createError(401, `Credentials are not ok!`));
+    }
   } catch (error) {
     next(error);
   }
