@@ -2,6 +2,7 @@ import express from "express";
 import mongoose from "mongoose";
 import listEndpoints from "express-list-endpoints";
 import cors from "cors";
+import usersRouter from "./services/users/index.js";
 
 const server = express();
 const port = process.env.port || 5001;
@@ -15,6 +16,7 @@ server.use(express.json());
 //server.use(passport.initialize());
 
 //***********************************Endpoints*********************************************************/
+server.use("/users", usersRouter);
 
 //***********************************Error handlers****************************************************/
 
