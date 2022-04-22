@@ -7,16 +7,20 @@ import { JWTAuthMiddleware } from "../../middlewares/auth/JWTMiddleware.js";
 
 const usersRouter = express.Router();
 
-usersRouter.post("/", async (req, res, next) => {
-  console.log("📨 PING - POST REQUEST");
-  try {
-    const newUser = new UsersModel(req.body);
-    const { _id } = await newUser.save();
-    res.status(201).send({ _id });
-  } catch (error) {
-    next(error);
-  }
-});
+// 0 - DEV EndPoint Only ⬇️⬇️⬇️
+
+// usersRouter.post("/", async (req, res, next) => {
+//   console.log("📨 PING - POST REQUEST");
+//   try {
+//     const newUser = new UsersModel(req.body);
+//     const { _id } = await newUser.save();
+//     res.status(201).send({ _id });
+//   } catch (error) {
+//     next(error);
+//   }
+// });
+
+// 🚉 1 - Get All users and their accommodations -- endpoint for ADMINS ONLY
 
 usersRouter.get("/", async (req, res, next) => {
   console.log("📨 PING - GET REQUEST");
@@ -30,6 +34,8 @@ usersRouter.get("/", async (req, res, next) => {
   }
 });
 
+// 🚉 2 - "Profile endpoint for authenticated users"
+
 usersRouter.get("/me", JWTAuthMiddleware, async (req, res, next) => {
   console.log("📨 PING - GET REQUEST");
   try {
@@ -41,6 +47,8 @@ usersRouter.get("/me", JWTAuthMiddleware, async (req, res, next) => {
     next(error);
   }
 });
+
+//🚉 3 - "Registration endpoint for new users"
 
 usersRouter.post("/register", async (req, res, next) => {
   try {
@@ -62,6 +70,8 @@ usersRouter.post("/register", async (req, res, next) => {
     next(error);
   }
 });
+
+//🚉 4 - "Login" endpoint for existing users - checking if email is in DB
 
 usersRouter.post("/login", async (req, res, next) => {
   try {
@@ -116,7 +126,9 @@ usersRouter.post("/login", async (req, res, next) => {
 //   }
 // );
 
-usersRouter.get("/:userId", async (req, res, next) => {
+//🚉 5 - "See user" endpoint to see a user - only logged-in users can see other users
+
+usersRouter.get("/:userId", JWTAuthMiddleware, async (req, res, next) => {
   console.log("📨 PING - GET REQUEST");
   try {
     const user = await UsersModel.findById(req.params.userId);
@@ -130,7 +142,9 @@ usersRouter.get("/:userId", async (req, res, next) => {
   }
 });
 
-usersRouter.put("/:userId", async (req, res, next) => {
+//🚉 6 - "Edit profile" - endpoint
+
+usersRouter.put("/:userId", JWTAuthMiddleware, async (req, res, next) => {
   console.log("📨 PING - PUT REQUEST");
   try {
     const updatedUser = await UsersModel.findByIdAndUpdate(
@@ -148,7 +162,9 @@ usersRouter.put("/:userId", async (req, res, next) => {
   }
 });
 
-usersRouter.delete("/:userId", async (req, res, next) => {
+//🚉 7 - "Delete profile" - endpoint
+
+usersRouter.delete("/:userId", JWTAuthMiddleware, async (req, res, next) => {
   console.log("📨 PING - DELETE REQUEST");
   try {
     const deletedUser = await UsersModel.findByIdAndUpdate(req.params.userId);
@@ -162,63 +178,69 @@ usersRouter.delete("/:userId", async (req, res, next) => {
   }
 });
 
-usersRouter.post("/:userId/accommodations", async (req, res, next) => {
-  console.log(`📨 PING - POST ACCOMMODATION FOR USER: ${req.params.userId} `);
+//🚉 8 - "Book accommodation" - endpoint
 
-  try {
-    //retrieve accommodationId from the req body
-    const { accommodationId } = req.body;
+usersRouter.post(
+  "/:userId/accommodations",
+  JWTAuthMiddleware,
+  async (req, res, next) => {
+    console.log(`📨 PING - POST ACCOMMODATION FOR USER: ${req.params.userId} `);
 
-    //0 Does user exist?
-    const user = await UsersModel.findById(req.params.userId);
-    if (!user) {
-      return next(
-        createError(404, `User with id ${req.params.userId} not found`)
-      );
+    try {
+      //retrieve accommodationId from the req body
+      const { accommodationId } = req.body;
+
+      //  0 Does user exist?
+      const user = await UsersModel.findById(req.params.userId);
+      if (!user) {
+        return next(
+          createError(404, `User with id ${req.params.userId} not found`)
+        );
+      }
+      //  1 Does accommodation exist ?
+      const accommodation = await AccommodationModel.findById(accommodationId);
+      if (!accommodation) {
+        return next(
+          createError(
+            404,
+            `Accommodation with id ${req.params.accommodationId} not found`
+          )
+        );
+      }
+
+      //2 Is the accommodation already booked ?
+      // !!! this is not working -- returning null
+      const isAccommodationBooked = await UsersModel.findOne({
+        _id: req.params.userId,
+        "accommodations._id": accommodation._id,
+      });
+
+      console.log(isAccommodationBooked);
+
+      if (isAccommodationBooked) {
+        // 3.1 If it's booked, remove it
+        const modifiedAccommodations = await UsersModel.findByIdAndUpdate(
+          { _id: req.params.userId },
+          { $pull: { accommodations: { _id: accommodationId } } },
+          { new: true }
+        );
+        res.send(modifiedAccommodations);
+      } else {
+        //3.2 If it's not booked - add it to accommodations: []
+        const modifiedAccommodations = await UsersModel.findByIdAndUpdate(
+          { _id: req.params.userId }, // WHAT we want to modify
+          { $push: { accommodations: { _id: accommodationId } } }, // HOW we want to modify the record
+          {
+            new: true, // OPTIONS
+            upsert: true, // if the accommodation of this user is not found --> just create it automagically please
+          }
+        );
+        res.send(modifiedAccommodations);
+      }
+    } catch (error) {
+      next(error);
     }
-    //1 Does accommodation exist ?
-    const accommodation = await AccommodationModel.findById(accommodationId);
-    if (!accommodation) {
-      return next(
-        createError(
-          404,
-          `Accommodation with id ${req.params.accommodationId} not found`
-        )
-      );
-    }
-
-    //2 Is the accommodation already booked ?
-    // !!! this is not working -- returning null
-    const isAccommodationBooked = await UsersModel.findOne({
-      _id: req.params.userId,
-      "accommodations._id": accommodation._id,
-    });
-
-    console.log(isAccommodationBooked);
-
-    if (isAccommodationBooked) {
-      // 3.1 If it's booked, remove it
-      const modifiedAccommodations = await UsersModel.findByIdAndUpdate(
-        { _id: req.params.userId },
-        { $pull: { accommodations: { _id: accommodationId } } },
-        { new: true }
-      );
-      res.send(modifiedAccommodations);
-    } else {
-      //3.2 If it's not booked - add it to accommodations: []
-      const modifiedAccommodations = await UsersModel.findByIdAndUpdate(
-        { _id: req.params.userId }, // WHAT we want to modify
-        { $push: { accommodations: { _id: accommodationId } } }, // HOW we want to modify the record
-        {
-          new: true, // OPTIONS
-          upsert: true, // if the accommodation of this user is not found --> just create it automagically please
-        }
-      );
-      res.send(modifiedAccommodations);
-    }
-  } catch (error) {
-    next(error);
   }
-});
+);
 
 export default usersRouter;
