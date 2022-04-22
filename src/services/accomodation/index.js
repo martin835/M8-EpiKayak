@@ -1,6 +1,5 @@
 import express from "express";
 import createError from "http-errors";
-
 import AccommodationModel from "./model.js";
 
 const accommodationRouter = express.Router();
@@ -19,7 +18,9 @@ accommodationRouter.post("/", async (req, res, next) => {
 accommodationRouter.get("/", async (req, res, next) => {
   console.log("📨 PING - GET REQUEST");
   try {
-    const accommodations = await AccommodationModel.find({});
+    const accommodations = await AccommodationModel.find({}).populate({
+      path: "host",
+    });
     res.send(accommodations);
   } catch (error) {
     next(error);

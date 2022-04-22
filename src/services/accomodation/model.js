@@ -8,6 +8,7 @@ const AccommodationSchema = new Schema(
     description: { type: String, required: true },
     maxGuests: { type: Number, required: true },
     city: { type: String, required: true },
+    host: { type: Schema.Types.ObjectId, ref: "User", required: true },
   },
   { timestamps: true }
 );

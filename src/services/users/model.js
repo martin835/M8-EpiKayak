@@ -10,6 +10,7 @@ const UserSchema = new Schema(
     password: { type: String },
     role: { type: String, enum: ["host", "guest"], default: "guest" },
     googleId: { type: String },
+    accommodations: [{ type: Schema.Types.ObjectId, ref: "Accommodation" }],
   },
   { timestamps: true }
 );
